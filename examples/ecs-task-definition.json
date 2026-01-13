@@ -1,0 +1,118 @@
+{
+    "family": "sveltekit-app",
+    "networkMode": "awsvpc",
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "512",
+    "memory": "1024",
+    "executionRoleArn": "arn:aws:iam::YOUR_ACCOUNT:role/ecsTaskExecutionRole",
+    "taskRoleArn": "arn:aws:iam::YOUR_ACCOUNT:role/ecsTaskRole",
+    "containerDefinitions": [
+        {
+            "name": "sveltekit-app",
+            "image": "YOUR_ACCOUNT.dkr.ecr.YOUR_REGION.amazonaws.com/sveltekit-app:latest",
+            "essential": true,
+            "portMappings": [
+                {
+                    "containerPort": 3000,
+                    "protocol": "tcp",
+                    "name": "http"
+                }
+            ],
+            "environment": [
+                {
+                    "name": "PORT",
+                    "value": "3000"
+                },
+                {
+                    "name": "HOST",
+                    "value": "0.0.0.0"
+                },
+                {
+                    "name": "NODE_ENV",
+                    "value": "production"
+                },
+                {
+                    "name": "OTEL_ENABLED",
+                    "value": "true"
+                },
+                {
+                    "name": "OTEL_SERVICE_NAME",
+                    "value": "sveltekit-app"
+                },
+                {
+                    "name": "OTEL_SERVICE_VERSION",
+                    "value": "1.0.0"
+                },
+                {
+                    "name": "OTEL_EXPORTER_OTLP_PROTOCOL",
+                    "value": "http"
+                },
+                {
+                    "name": "WEBSOCKET_ENABLED",
+                    "value": "true"
+                },
+                {
+                    "name": "WEBSOCKET_PATH",
+                    "value": "/ws"
+                },
+                {
+                    "name": "KEEP_ALIVE_TIMEOUT",
+                    "value": "65000"
+                },
+                {
+                    "name": "HEADERS_TIMEOUT",
+                    "value": "66000"
+                },
+                {
+                    "name": "BODY_LIMIT",
+                    "value": "10mb"
+                },
+                {
+                    "name": "TRUST_PROXY",
+                    "value": "true"
+                }
+            ],
+            "secrets": [
+                {
+                    "name": "DYNATRACE_API_TOKEN",
+                    "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT:secret:sveltekit/dynatrace-token-XXXXXX"
+                },
+                {
+                    "name": "OTEL_EXPORTER_OTLP_ENDPOINT",
+                    "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT:secret:sveltekit/dynatrace-endpoint-XXXXXX"
+                }
+            ],
+            "healthCheck": {
+                "command": [
+                    "CMD-SHELL",
+                    "node -e \"require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))\""
+                ],
+                "interval": 30,
+                "timeout": 5,
+                "retries": 3,
+                "startPeriod": 40
+            },
+            "stopTimeout": 35,
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/sveltekit-app",
+                    "awslogs-region": "YOUR_REGION",
+                    "awslogs-stream-prefix": "ecs",
+                    "awslogs-create-group": "true"
+                }
+            },
+            "ulimits": [
+                {
+                    "name": "nofile",
+                    "softLimit": 65536,
+                    "hardLimit": 65536
+                }
+            ],
+            "mountPoints": [],
+            "volumesFrom": []
+        }
+    ]
+}
