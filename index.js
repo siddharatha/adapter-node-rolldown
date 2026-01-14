@@ -9,19 +9,8 @@ const files = fileURLToPath(new URL('./files', import.meta.url).href);
  * @property {string} [out='build'] - Output directory
  * @property {boolean} [precompress=true] - Pre-compress static assets
  * @property {string} [envPrefix=''] - Prefix for environment variables
- * @property {boolean} [compression=true] - Enable runtime compression
- * @property {number} [compressionLevel=6] - Compression level (1-9)
- * @property {string} [bodyLimit='10mb'] - Body parser size limit
- * @property {boolean} [websocket=true] - Enable WebSocket support
- * @property {string} [websocketPath='/ws'] - WebSocket endpoint path
- * @property {boolean} [telemetry=true] - Enable OpenTelemetry
- * @property {object} [telemetryConfig={}] - Additional telemetry configuration
- * @property {number} [telemetrySampleRate=1.0] - Sampling rate (0.0-1.0)
- * @property {boolean} [healthCheck=true] - Enable health check endpoints
- * @property {number} [gracefulShutdownTimeout=30000] - Graceful shutdown timeout (ms)
  * @property {boolean} [polyfill=true] - Inject global polyfills
- * @property {string[]|((pkg: any) => string[])} [external] - External packages to exclude from bundle. Can be array of package names or function that receives package.json and returns array
- * @property {boolean} [bundleAll=false] - Bundle all dependencies (ignore package.json dependencies)
+ * @property {string[]|((pkg: any) => string[])} [external] - External packages to exclude from bundle
  * @property {object} [rolldownOptions={}] - Additional rolldown configuration options
  */
 
@@ -30,23 +19,13 @@ const files = fileURLToPath(new URL('./files', import.meta.url).href);
  * @param {AdapterOptions} options
  */
 export default function (options = {}) {
+    console.log('Using @siddharatha/adapter-node-rolldown v1.0.4 at 14 jan 16:06');
     const {
         out = 'build',
         precompress = true,
         envPrefix = '',
-        compression = true,
-        compressionLevel = 6,
-        bodyLimit = '1000mb',
-        websocket = true,
-        websocketPath = '/ws',
-        telemetry = true,
-        telemetryConfig = {},
-        telemetrySampleRate = 1.0,
-        healthCheck = true,
-        gracefulShutdownTimeout = 30000,
         polyfill = true,
         external,
-        bundleAll = false,
         rolldownOptions = {}
     } = options;
 
@@ -109,16 +88,17 @@ export default function (options = {}) {
             ];
 
             // Determine external packages
-            let externalPackages = [];
-            if (!bundleAll) {
-                if (typeof external === 'function') {
-                    externalPackages = external(pkg);
-                } else if (Array.isArray(external)) {
-                    externalPackages = external;
-                } else {
-                    // Default: use package.json dependencies
-                    externalPackages = Object.keys(pkg.dependencies || {});
-                }
+            // Always include runtime dependencies and user dependencies
+            const runtimeDeps = ['polka', 'sirv', '@polka/url'];
+            let externalPackages = [...runtimeDeps];
+
+            if (typeof external === 'function') {
+                externalPackages = [...externalPackages, ...external(pkg)];
+            } else if (Array.isArray(external)) {
+                externalPackages = [...externalPackages, ...external];
+            } else {
+                // Default: use package.json dependencies
+                externalPackages = [...externalPackages, ...Object.keys(pkg.dependencies || {})];
             }
 
             // Combine builtins with external packages
@@ -151,28 +131,47 @@ export default function (options = {}) {
                 chunkFileNames: 'chunks/[name]-[hash].js'
             });
 
-            builder.copy(files, out, {
+            // Now copy and bundle the runtime files
+            builder.copy(files, `${tmp}/runtime`, {
                 replace: {
-                    ENV: './env.js',
                     HANDLER: './handler.js',
                     MANIFEST: './server/manifest.js',
                     SERVER: './server/index.js',
                     SHIMS: './shims.js',
-                    MIDDLEWARES: './middlewares.js',
-                    TELEMETRY: './telemetry.js',
                     ENV_PREFIX: JSON.stringify(envPrefix),
-                    COMPRESSION_ENABLED: JSON.stringify(compression),
-                    COMPRESSION_LEVEL: JSON.stringify(compressionLevel),
-                    BODY_LIMIT: JSON.stringify(bodyLimit),
-                    WEBSOCKET_ENABLED: JSON.stringify(websocket),
-                    WEBSOCKET_PATH: JSON.stringify(websocketPath),
-                    TELEMETRY_ENABLED: JSON.stringify(telemetry),
-                    TELEMETRY_CONFIG: JSON.stringify(telemetryConfig),
-                    TELEMETRY_SAMPLE_RATE: JSON.stringify(telemetrySampleRate),
-                    HEALTH_CHECK_ENABLED: JSON.stringify(healthCheck),
-                    GRACEFUL_SHUTDOWN_TIMEOUT: JSON.stringify(gracefulShutdownTimeout),
                     POLYFILL: JSON.stringify(polyfill)
                 }
+            });
+
+            // Bundle the runtime files (second pass)
+            // Mark the server files as external since they're already bundled
+            const runtimeExternalPatterns = [
+                ...externalPatterns,
+                /^\.\/server\//  // Server files are already bundled, keep them external
+            ];
+
+            const runtimeBundle = await rolldown({
+                input: {
+                    index: `${tmp}/runtime/index.js`
+                },
+                external: runtimeExternalPatterns,
+                resolve: {
+                    conditionNames: ['node', 'import'],
+                    modulePaths: [
+                        fileURLToPath(new URL('./node_modules', import.meta.url)),
+                        ...(rolldownOptions.resolve?.modulePaths || [])
+                    ],
+                    ...rolldownOptions.resolve
+                },
+                cwd: process.cwd(),
+                ...rolldownOptions
+            });
+
+            await runtimeBundle.write({
+                dir: `${out}`,
+                format: 'esm',
+                sourcemap: true,
+                chunkFileNames: 'chunks/[name]-[hash].js'
             });
 
             // Support for instrumentation
@@ -188,36 +187,15 @@ export default function (options = {}) {
 
             builder.log.minor('Generating package.json');
 
-            // Required runtime dependencies for the adapter
-            const adapterDeps = {
+            // Include adapter runtime dependencies + all user dependencies
+            const finalDeps = {
                 '@polka/url': '^1.0.0-next.28',
                 'polka': '^0.5.2',
                 'sirv': '^3.0.2',
-                'compression': '^1.7.4'
+                ...(pkg.dependencies || {})
             };
 
-            // Optional dependencies based on configuration
-            if (websocket) {
-                adapterDeps['ws'] = '^8.16.0';
-            }
-
-            if (telemetry) {
-                Object.assign(adapterDeps, {
-                    '@opentelemetry/sdk-node': '0.48.0',
-                    '@opentelemetry/auto-instrumentations-node': '0.41.0',
-                    '@opentelemetry/exporter-trace-otlp-http': '0.48.0',
-                    '@opentelemetry/exporter-trace-otlp-grpc': '0.48.0',
-                    '@opentelemetry/resources': '1.21.0',
-                    '@opentelemetry/semantic-conventions': '1.21.0',
-                    '@opentelemetry/api': '1.7.0',
-                    'import-in-the-middle': '^2.0.3'
-                });
-            }
-
-            // Merge user's production dependencies with adapter dependencies
-            // This ensures packages like aws-sdk, dynamodb, etc. are installed at runtime
-            const userDeps = pkg.dependencies || {};
-            const finalDeps = { ...userDeps, ...adapterDeps };
+            builder.log.info(`Including ${Object.keys(finalDeps).length} dependencies in output package.json`);
 
             writeFileSync(
                 `${out}/package.json`,
