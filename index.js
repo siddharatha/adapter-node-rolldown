@@ -210,7 +210,7 @@ export default function (options = {}) {
                     '@opentelemetry/resources': '1.21.0',
                     '@opentelemetry/semantic-conventions': '1.21.0',
                     '@opentelemetry/api': '1.7.0',
-                    'import-in-the-middle': '^1.17.1'
+                    'import-in-the-middle': '^2.0.3'
                 });
             }
 

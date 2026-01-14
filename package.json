@@ -1,6 +1,6 @@
 {
     "name": "@siddharatha/adapter-node-rolldown",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "High-performance SvelteKit adapter for Node.js with Polka, WebSockets, and OpenTelemetry",
     "type": "module",
     "exports": {
