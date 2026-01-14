@@ -187,34 +187,50 @@ export default function (options = {}) {
             }
 
             builder.log.minor('Generating package.json');
+
+            // Required runtime dependencies for the adapter
+            const adapterDeps = {
+                '@polka/url': '^1.0.0-next.28',
+                'polka': '^0.5.2',
+                'sirv': '^3.0.2',
+                'compression': '^1.7.4'
+            };
+
+            // Optional dependencies based on configuration
+            if (websocket) {
+                adapterDeps['ws'] = '^8.16.0';
+            }
+
+            if (telemetry) {
+                Object.assign(adapterDeps, {
+                    '@opentelemetry/sdk-node': '0.48.0',
+                    '@opentelemetry/auto-instrumentations-node': '0.41.0',
+                    '@opentelemetry/exporter-trace-otlp-http': '0.48.0',
+                    '@opentelemetry/exporter-trace-otlp-grpc': '0.48.0',
+                    '@opentelemetry/resources': '1.21.0',
+                    '@opentelemetry/semantic-conventions': '1.21.0',
+                    '@opentelemetry/api': '1.7.0',
+                    'import-in-the-middle': '^1.17.1'
+                });
+            }
+
+            // Merge user's production dependencies with adapter dependencies
+            // This ensures packages like aws-sdk, dynamodb, etc. are installed at runtime
+            const userDeps = pkg.dependencies || {};
+            const finalDeps = { ...userDeps, ...adapterDeps };
+
             writeFileSync(
                 `${out}/package.json`,
                 JSON.stringify(
                     {
-                        name: 'sveltekit-app',
-                        version: '1.0.0',
+                        name: pkg.name || 'sveltekit-app',
+                        version: pkg.version || '1.0.0',
                         type: 'module',
                         main: './index.js',
                         engines: {
-                            node: '>=24.12.0'
+                            node: pkg.engines?.node || '>=24.12.0'
                         },
-                        dependencies: Object.fromEntries(
-                            Object.entries({
-                                '@polka/url': '^1.0.0-next.28',
-                                polka: '^0.5.2',
-                                sirv: '^3.0.2',
-                                compression: '^1.7.4',
-                                ws: websocket ? '^8.16.0' : undefined,
-                                '@opentelemetry/sdk-node': telemetry ? '0.48.0' : undefined,
-                                '@opentelemetry/auto-instrumentations-node': telemetry ? '0.41.0' : undefined,
-                                '@opentelemetry/exporter-trace-otlp-http': telemetry ? '0.48.0' : undefined,
-                                '@opentelemetry/exporter-trace-otlp-grpc': telemetry ? '0.48.0' : undefined,
-                                '@opentelemetry/resources': telemetry ? '1.21.0' : undefined,
-                                '@opentelemetry/semantic-conventions': telemetry ? '1.21.0' : undefined,
-                                '@opentelemetry/api': telemetry ? '1.7.0' : undefined,
-                                'import-in-the-middle': telemetry ? '^1.17.1' : undefined
-                            }).filter(([, value]) => value !== undefined)
-                        )
+                        dependencies: finalDeps
                     },
                     null,
                     2
