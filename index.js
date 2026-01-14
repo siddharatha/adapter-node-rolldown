@@ -211,7 +211,8 @@ export default function (options = {}) {
                                 '@opentelemetry/exporter-trace-otlp-grpc': telemetry ? '0.48.0' : undefined,
                                 '@opentelemetry/resources': telemetry ? '1.21.0' : undefined,
                                 '@opentelemetry/semantic-conventions': telemetry ? '1.21.0' : undefined,
-                                '@opentelemetry/api': telemetry ? '1.7.0' : undefined
+                                '@opentelemetry/api': telemetry ? '1.7.0' : undefined,
+                                'import-in-the-middle': telemetry ? '^1.17.1' : undefined
                             }).filter(([, value]) => value !== undefined)
                         )
                     },
