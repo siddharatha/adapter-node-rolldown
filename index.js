@@ -19,7 +19,7 @@ const files = fileURLToPath(new URL('./files', import.meta.url).href);
  * @param {AdapterOptions} options
  */
 export default function (options = {}) {
-    console.log('Using @siddharatha/adapter-node-rolldown v1.0.4 at 14 jan 16:06');
+    console.log('Using @siddharatha/adapter-node-rolldown v1.0.6 at 15 jan 11:58');
     const {
         out = 'build',
         precompress = true,
@@ -90,7 +90,26 @@ export default function (options = {}) {
             // Determine external packages
             // Always include runtime dependencies and user dependencies
             const runtimeDeps = ['polka', 'sirv', '@polka/url'];
-            let externalPackages = [...runtimeDeps];
+
+            // OpenTelemetry packages have CommonJS/require issues when bundled as ESM
+            // Always mark them as external
+            const otelPackages = [
+                '@opentelemetry/api',
+                '@opentelemetry/sdk-node',
+                '@opentelemetry/auto-instrumentations-node',
+                '@opentelemetry/exporter-trace-otlp-http',
+                '@opentelemetry/exporter-trace-otlp-grpc',
+                '@opentelemetry/exporter-metrics-otlp-http',
+                '@opentelemetry/exporter-metrics-otlp-grpc',
+                '@opentelemetry/otlp-exporter-base',
+                '@opentelemetry/resources',
+                '@opentelemetry/semantic-conventions',
+                '@opentelemetry/core',
+                '@opentelemetry/instrumentation',
+                'import-in-the-middle'
+            ];
+
+            let externalPackages = [...runtimeDeps, ...otelPackages];
 
             if (typeof external === 'function') {
                 externalPackages = [...externalPackages, ...external(pkg)];
@@ -116,6 +135,7 @@ export default function (options = {}) {
             const bundle = await rolldown({
                 input,
                 external: externalPatterns,
+                platform: 'node',
                 resolve: {
                     conditionNames: ['node', 'import'],
                     ...rolldownOptions.resolve
@@ -128,7 +148,9 @@ export default function (options = {}) {
                 dir: `${out}/server`,
                 format: 'esm',
                 sourcemap: true,
-                chunkFileNames: 'chunks/[name]-[hash].js'
+                chunkFileNames: 'chunks/[name]-[hash].js',
+                minify: false,
+                keepNames: true
             });
 
             // Now copy and bundle the runtime files
@@ -155,6 +177,7 @@ export default function (options = {}) {
                     index: `${tmp}/runtime/index.js`
                 },
                 external: runtimeExternalPatterns,
+                platform: 'node',
                 resolve: {
                     conditionNames: ['node', 'import'],
                     modulePaths: [
@@ -171,7 +194,9 @@ export default function (options = {}) {
                 dir: `${out}`,
                 format: 'esm',
                 sourcemap: true,
-                chunkFileNames: 'chunks/[name]-[hash].js'
+                chunkFileNames: 'chunks/[name]-[hash].js',
+                minify: false,
+                keepNames: true
             });
 
             // Support for instrumentation
@@ -187,6 +212,12 @@ export default function (options = {}) {
 
             builder.log.minor('Generating package.json');
 
+            // Collect all user dependencies (both dependencies and devDependencies)
+            const allUserDeps = {
+                ...(pkg.dependencies || {}),
+                ...(pkg.devDependencies || {})
+            };
+
             // Include adapter runtime dependencies + all user dependencies
             const finalDeps = {
                 '@polka/url': '^1.0.0-next.28',
@@ -194,6 +225,13 @@ export default function (options = {}) {
                 'sirv': '^3.0.2',
                 ...(pkg.dependencies || {})
             };
+
+            // Add OpenTelemetry packages if they're used (from devDependencies or dependencies)
+            for (const otelPkg of otelPackages) {
+                if (allUserDeps[otelPkg] && !finalDeps[otelPkg]) {
+                    finalDeps[otelPkg] = allUserDeps[otelPkg];
+                }
+            }
 
             builder.log.info(`Including ${Object.keys(finalDeps).length} dependencies in output package.json`);
 
@@ -205,9 +243,6 @@ export default function (options = {}) {
                         version: pkg.version || '1.0.0',
                         type: 'module',
                         main: './index.js',
-                        engines: {
-                            node: pkg.engines?.node || '>=24.12.0'
-                        },
                         dependencies: finalDeps
                     },
                     null,
