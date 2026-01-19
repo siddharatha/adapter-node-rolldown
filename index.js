@@ -19,7 +19,6 @@ const files = fileURLToPath(new URL('./files', import.meta.url).href);
  * @param {AdapterOptions} options
  */
 export default function (options = {}) {
-    console.log('Using @siddharatha/adapter-node-rolldown v1.0.6 at 15 jan 11:58');
     const {
         out = 'build',
         precompress = true,
