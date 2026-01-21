@@ -1,30 +1,24 @@
 import polka from 'polka';
-import sirv from 'sirv';
 import { handler } from 'HANDLER';
+import { createCompressionMiddleware, createStaticMiddleware } from 'MIDDLEWARES';
 
 const app = polka();
 
-// Serve static assets
-app.use(sirv('client', {
-    etag: true,
-    maxAge: 31536000,
-    immutable: true,
-    gzip: true,
-    brotli: true
-}));
+// Serve static assets (use optimized static middleware)
+app.use(createStaticMiddleware('client'));
 
 // Serve prerendered pages if they exist
 try {
     const { existsSync } = await import('node:fs');
     if (existsSync('prerendered')) {
-        app.use(sirv('prerendered', {
-            etag: true,
-            maxAge: 0
-        }));
+        app.use(createStaticMiddleware('prerendered', false));
     }
 } catch (e) {
     // Skip if prerendered doesn't exist
 }
+
+// Register compression for dynamic responses
+app.use(createCompressionMiddleware());
 
 // Handle all SvelteKit requests
 app.use(handler);

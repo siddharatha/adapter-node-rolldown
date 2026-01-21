@@ -159,6 +159,7 @@ export default function (options = {}) {
                     MANIFEST: './server/manifest.js',
                     SERVER: './server/index.js',
                     SHIMS: './shims.js',
+                    MIDDLEWARES: './middlewares.js',
                     ENV_PREFIX: JSON.stringify(envPrefix),
                     POLYFILL: JSON.stringify(polyfill)
                 }
