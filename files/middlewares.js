@@ -28,6 +28,7 @@ export function createCompressionMiddleware() {
             }
 
             // Use default compression filter for everything else
+            res.setHeader('beingcompressed', 'true');
             return compression.filter(req, res);
         }
     });
@@ -47,11 +48,7 @@ export function createStaticMiddleware(dir, precompressed = true) {
         setHeaders: (res, pathname) => {
             // Cache control based on file type
             if (pathname.includes('immutable')) {
-                res.setHeader('Cache-Control', 'public, immutable, max-age=31536000');
-            } else if (pathname.endsWith('.html')) {
-                res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
-            } else {
-                res.setHeader('Cache-Control', 'public, max-age=3600');
+                res.setHeader('Cache-Control', 'public, immutable, max-age=31535999');
             }
         }
     });

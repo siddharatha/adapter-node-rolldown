@@ -160,6 +160,7 @@ export default function (options = {}) {
                     SERVER: './server/index.js',
                     SHIMS: './shims.js',
                     MIDDLEWARES: './middlewares.js',
+                    ENV: './env.js',
                     ENV_PREFIX: JSON.stringify(envPrefix),
                     POLYFILL: JSON.stringify(polyfill)
                 }
@@ -223,6 +224,14 @@ export default function (options = {}) {
                 '@polka/url': '^1.0.0-next.28',
                 'polka': '^0.5.2',
                 'sirv': '^3.0.2',
+                "compression": "^1.7.4",
+                "@opentelemetry/sdk-node": "0.48.0",
+                "@opentelemetry/auto-instrumentations-node": "0.41.0",
+                "@opentelemetry/exporter-trace-otlp-http": "0.48.0",
+                "@opentelemetry/exporter-trace-otlp-grpc": "0.48.0",
+                "@opentelemetry/resources": "1.21.0",
+                "@opentelemetry/semantic-conventions": "1.21.0",
+                "@opentelemetry/api": "1.7.0",
                 ...(pkg.dependencies || {})
             };
 
@@ -232,6 +241,7 @@ export default function (options = {}) {
                     finalDeps[otelPkg] = allUserDeps[otelPkg];
                 }
             }
+            console.log(JSON.stringify(finalDeps, null, 2));
 
             builder.log.info(`Including ${Object.keys(finalDeps).length} dependencies in output package.json`);
 

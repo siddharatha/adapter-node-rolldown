@@ -18,7 +18,7 @@ try {
 }
 
 // Register compression for dynamic responses
-app.use(createCompressionMiddleware());
+// app.use(createCompressionMiddleware());
 
 // Handle all SvelteKit requests
 app.use(handler);

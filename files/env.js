@@ -7,35 +7,35 @@ export const config = {
     host: process.env.HOST || '0.0.0.0', // Important: use 0.0.0.0 for containers
 
     // Performance options
-    compression: JSON.parse('COMPRESSION_ENABLED'),
-    compressionLevel: JSON.parse('COMPRESSION_LEVEL'),
-    bodyLimit: JSON.parse('BODY_LIMIT'),
+    compression: JSON.parse(process.env.COMPRESSION_ENABLED || 'true'),
+    compressionLevel: JSON.parse(process.env.COMPRESSION_LEVEL || '6'),
+    bodyLimit: JSON.parse(process.env.BODY_LIMIT || '"100mb"'),
 
     // WebSocket configuration
     websocket: {
-        enabled: JSON.parse('WEBSOCKET_ENABLED'),
-        path: JSON.parse('WEBSOCKET_PATH')
+        enabled: JSON.parse(process.env.WEBSOCKET_ENABLED || 'false'),
+        path: JSON.parse(process.env.WEBSOCKET_PATH || '"/ws"')
     },
 
     // OpenTelemetry configuration
     telemetry: {
-        enabled: JSON.parse('TELEMETRY_ENABLED') && process.env.OTEL_ENABLED !== 'false',
+        enabled: JSON.parse(process.env.TELEMETRY_ENABLED || 'false') && process.env.OTEL_ENABLED !== 'false',
         serviceName: process.env.OTEL_SERVICE_NAME || 'sveltekit-app',
         serviceVersion: process.env.OTEL_SERVICE_VERSION || '1.0.0',
         endpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
         protocol: process.env.OTEL_EXPORTER_OTLP_PROTOCOL || 'http', // 'http' or 'grpc'
-        sampleRate: parseFloat(process.env.OTEL_SAMPLE_RATE || JSON.parse('TELEMETRY_SAMPLE_RATE')),
+        sampleRate: parseFloat(process.env.OTEL_SAMPLE_RATE || '0.1'),
         dynatraceToken: process.env.DYNATRACE_API_TOKEN,
-        customConfig: JSON.parse('TELEMETRY_CONFIG')
+        customConfig: JSON.parse(process.env.TELEMETRY_CONFIG || '{}')
     },
 
     // Health check configuration
     healthCheck: {
-        enabled: JSON.parse('HEALTH_CHECK_ENABLED')
+        enabled: JSON.parse(process.env.HEALTH_CHECK_ENABLED || 'true')
     },
 
     // Graceful shutdown
-    gracefulShutdownTimeout: JSON.parse('GRACEFUL_SHUTDOWN_TIMEOUT'),
+    gracefulShutdownTimeout: JSON.parse(process.env.GRACEFUL_SHUTDOWN_TIMEOUT || '30000'),
 
     // Server tuning
     keepAliveTimeout: parseInt(process.env.KEEP_ALIVE_TIMEOUT || '65000', 10),
