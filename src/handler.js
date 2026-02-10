@@ -23,7 +23,7 @@ const protocol_header = env('PROTOCOL_HEADER', '').toLowerCase();
 const host_header = env('HOST_HEADER', '').toLowerCase();
 const port_header = env('PORT_HEADER', '').toLowerCase();
 
-const body_size_limit = parse_as_bytes(env('BODY_SIZE_LIMIT', '512K'));
+const body_size_limit = parse_as_bytes(env('BODY_SIZE_LIMIT', '3145728')); // 3mb default
 
 if (isNaN(body_size_limit)) {
     throw new Error(
